@@ -21,16 +21,18 @@ from __future__ import annotations
 import math
 import time
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 import pyvista as pv
 import webp
 
-from . import geometry
-from . import _parameter_validation
-from . import steady_horseshoe_vortex_lattice_method
-from . import steady_ring_vortex_lattice_method
-from . import unsteady_ring_vortex_lattice_method
+from . import (
+    _parameter_validation,
+    geometry,
+    steady_horseshoe_vortex_lattice_method,
+    steady_ring_vortex_lattice_method,
+    unsteady_ring_vortex_lattice_method,
+)
 
 # Define the color and colormaps used by the visualization functions.
 _sequential_color_map = "speed"
@@ -1182,6 +1184,18 @@ def print_results(
         ]
 
         print(f'Airplane "{airplane.name}":')
+
+        # Display the Reynolds number for steady solvers.
+        if solver_type == "steady":
+            assert isinstance(
+                solver,
+                (
+                    steady_horseshoe_vortex_lattice_method.SteadyHorseshoeVortexLatticeMethodSolver,
+                    steady_ring_vortex_lattice_method.SteadyRingVortexLatticeMethodSolver,
+                ),
+            )
+            re = solver.reynolds_numbers[airplane_num]
+            print(f"{pad}Reynolds Number: {re:.2e}")
 
         for i in range(len(col1)):
             if i == 0:

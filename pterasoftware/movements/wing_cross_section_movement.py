@@ -11,20 +11,20 @@ None
 
 from __future__ import annotations
 
-from collections.abc import Sequence, Callable
+from collections.abc import Callable, Sequence
 
 import numpy as np
 
+from .. import _parameter_validation, geometry
 from . import _functions
-
-from .. import geometry
-from .. import _parameter_validation
 
 
 class WingCrossSectionMovement:
     """A class used to contain a WingCrossSection's movement.
 
     **Contains the following methods:**
+
+    all_periods: All unique non zero periods from this WingCrossSectionMovement.
 
     generate_wing_cross_sections: Creates the WingCrossSection at each time step, and
     returns them in a list.
@@ -260,6 +260,26 @@ class WingCrossSectionMovement:
                     "be also be 0.0."
                 )
         self.phaseAngles_Wcsp_to_Wcs_ixyz = phaseAngles_Wcsp_to_Wcs_ixyz
+
+    @property
+    def all_periods(self) -> list[float]:
+        """All unique non zero periods from this WingCrossSectionMovement.
+
+        :return: A list of all unique non zero periods in seconds. If the motion is
+            static, this will be an empty list.
+        """
+        periods = []
+
+        # Collect all periods from positional motion.
+        for period in self.periodLp_Wcsp_Lpp:
+            if period > 0.0:
+                periods.append(float(period))
+
+        # Collect all periods from angular motion.
+        for period in self.periodAngles_Wcsp_to_Wcs_ixyz:
+            if period > 0.0:
+                periods.append(float(period))
+        return periods
 
     def generate_wing_cross_sections(
         self,

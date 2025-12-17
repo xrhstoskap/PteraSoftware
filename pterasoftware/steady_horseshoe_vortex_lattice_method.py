@@ -13,16 +13,22 @@ None
 from __future__ import annotations
 
 from collections.abc import Sequence
-import logging
 from typing import cast
 
 import numpy as np
 
-from . import _aerodynamics, geometry, operating_point
-from . import _functions
-from . import _panel
-from . import _parameter_validation
-from . import problems
+from . import (
+    _aerodynamics,
+    _functions,
+    _logging,
+    _panel,
+    _parameter_validation,
+    geometry,
+    operating_point,
+    problems,
+)
+
+_logger = _logging.get_logger("steady_horseshoe_vortex_lattice_method")
 
 
 # TEST: Consider adding unit tests for this function.
@@ -63,6 +69,7 @@ class SteadyHorseshoeVortexLatticeMethodSolver:
         self.operating_point: operating_point.OperatingPoint = (
             self._steady_problem.operating_point
         )
+        self.reynolds_numbers = self._steady_problem.reynolds_numbers
         self.num_airplanes = len(self.airplanes)
 
         # Calculate the total number of Panels for all of this SteadyProblem's
@@ -106,52 +113,42 @@ class SteadyHorseshoeVortexLatticeMethodSolver:
 
         self.ran = False
 
-    def run(self, logging_level: str = "Warning") -> None:
+    def run(self) -> None:
         """Runs the solver on the SteadyProblem.
 
-        :param logging_level: Determines the detail of information that the solver's
-            logger will output while running. The options are, in order of detail and
-            severity, "Debug", "Info", "Warning", "Error", "Critical". The default is
-            "Warning".
         :return: None
         """
-        # Configure the SteadyProblem's logger.
-        logging_level_value = _functions.convert_logging_level_name_to_value(
-            logging_level
-        )
-        logging.basicConfig(level=logging_level_value)
-
         # Initialize the Panels' HorseshoeVortices.
-        logging.info("Initializing the Panels' HorseshoeVortices.")
+        _logger.debug("Initializing the Panels' HorseshoeVortices.")
         self._initialize_panel_vortices()
 
         # Collapse the geometry matrices into 1D ndarrays of attributes.
-        logging.info("Collapsing the geometry.")
+        _logger.debug("Collapsing the geometry.")
         self._collapse_geometry()
 
         # Find the matrix of Wing-wing influence coefficients associated with this
         # SteadyProblem's geometry.
-        logging.info("Calculating the Wing Wing influences.")
+        _logger.debug("Calculating the Wing Wing influences.")
         self._calculate_wing_wing_influences()
 
         # Find the normal velocity (in the first Airplane's geometry axes, observed
         # from the Earth frame) at every collocation point due solely to the freestream.
-        logging.info("Calculating the freestream Wing influences.")
+        _logger.debug("Calculating the freestream Wing influences.")
         _functions.calculate_steady_freestream_wing_influences(steady_solver=self)
 
         # Solve for each Panel's HorseshoeVortex's strength.
-        logging.info("Calculating the HorseshoeVortex strengths.")
+        _logger.debug("Calculating the HorseshoeVortex strengths.")
         self._calculate_vortex_strengths()
 
         # Solve for the forces (in the first Airplane's geometry axes) and moments (
         # in the first Airplane's geometry axes, relative to the first Airplane's CG)
         # on each Panel.
-        logging.info("Calculating the forces and moments.")
+        _logger.debug("Calculating the forces and moments.")
         self._calculate_loads()
 
         # Solve for the location of the streamlines coming off the Wings' trailing
         # edges.
-        logging.info("Calculating streamlines.")
+        _logger.debug("Calculating streamlines.")
         _functions.calculate_streamlines(self)
 
         # Mark that the solver has run.

@@ -11,15 +11,13 @@ None
 
 from __future__ import annotations
 
-from collections.abc import Sequence, Callable
+from collections.abc import Callable, Sequence
 
 import numpy as np
 
+from .. import _parameter_validation, geometry
 from . import _functions
 from . import wing_cross_section_movement as wing_cross_section_movement_mod
-
-from .. import geometry
-from .. import _parameter_validation
 
 
 class WingMovement:
@@ -27,10 +25,13 @@ class WingMovement:
 
     **Contains the following methods:**
 
+    all_periods: All unique non zero periods from this WingMovement and its
+    WingCrossSectionMovements.
+
     generate_wings: Creates the Wing at each time step, and returns them in a list.
 
-    max_period: The longest period of WingMovement's own motion and that of its
-    sub movement objects.
+    max_period: The longest period of WingMovement's own motion and that of its sub
+    movement objects.
 
     **Notes:**
 
@@ -274,6 +275,29 @@ class WingMovement:
                     "also be 0.0."
                 )
         self.phaseAngles_Gs_to_Wn_ixyz = phaseAngles_Gs_to_Wn_ixyz
+
+    @property
+    def all_periods(self) -> list[float]:
+        """All unique non zero periods from this WingMovement and its
+        WingCrossSectionMovements.
+
+        :return: A list of all unique non zero periods in seconds. If all motion is
+            static, this will be an empty list.
+        """
+        periods = []
+
+        # Collect all periods from WingCrossSectionMovements
+        for wing_cross_section_movement in self.wing_cross_section_movements:
+            periods.extend(wing_cross_section_movement.all_periods)
+
+        # Collect all periods from WingMovement's own motion
+        for period in self.periodLer_Gs_Cgs:
+            if period > 0.0:
+                periods.append(float(period))
+        for period in self.periodAngles_Gs_to_Wn_ixyz:
+            if period > 0.0:
+                periods.append(float(period))
+        return periods
 
     def generate_wings(
         self, num_steps: int, delta_time: float | int

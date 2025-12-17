@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-import logging
-from typing import cast
-
 import numpy as np
 from numba import njit
 
-from . import _panel
-from . import _transformations
-from . import steady_horseshoe_vortex_lattice_method
-from . import steady_ring_vortex_lattice_method
-from . import unsteady_ring_vortex_lattice_method
+from . import (
+    _panel,
+    _transformations,
+    steady_horseshoe_vortex_lattice_method,
+    steady_ring_vortex_lattice_method,
+    unsteady_ring_vortex_lattice_method,
+)
 
 
 # TEST: Consider adding unit tests for this function.
@@ -43,10 +42,7 @@ def cosspace(
     amp = (maximum - minimum) / 2
 
     # Space the points by applying cosine to the output of linspace and return them.
-    return cast(
-        np.ndarray,
-        mean + amp * np.cos(np.linspace(np.pi, 0, n_points, endpoint=endpoint)),
-    )
+    return mean + amp * np.cos(np.linspace(np.pi, 0, n_points, endpoint=endpoint))
 
 
 # TEST: Consider adding unit tests for this function.
@@ -157,28 +153,6 @@ def calculate_streamlines(
                 np.expand_dims(newRowStackStreamlinePoints_GP1_CgP1, axis=0),
             )
         )
-
-
-# TEST: Consider adding unit tests for this function.
-def convert_logging_level_name_to_value(name: str) -> int:
-    """Takes in a str, checks that it represents a valid logging level, and converts it
-    to the int representation of that level.
-
-    :param name: The string representation of the logging level. The options are
-        "Debug", "Info", "Warning", "Error", and "Critical".
-    :return: The int that can used to set the appropriate logging level.
-    """
-    logging_levels = {
-        "Debug": logging.DEBUG,
-        "Info": logging.INFO,
-        "Warning": logging.WARNING,
-        "Error": logging.ERROR,
-        "Critical": logging.CRITICAL,
-    }
-    try:
-        return logging_levels[name]
-    except KeyError:
-        raise ValueError(f"{name} is not a valid value of name.")
 
 
 # TEST: Consider adding unit tests for this function.
@@ -464,7 +438,8 @@ def numba_1d_explicit_cross(
 
     **Citation:**
 
-    Adapted from: https://stackoverflow.com/a/66757029/13240504
+    Adapted from:
+    https://stackoverflow.com/a/66757029/13240504
 
     Author: Jérôme Richard
 

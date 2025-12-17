@@ -17,11 +17,7 @@ import math
 
 import numpy as np
 
-from . import geometry
-from . import movements
-
-from . import _parameter_validation
-from . import _transformations
+from . import _parameter_validation, _transformations, geometry, movements
 from . import operating_point as operating_point_mod
 
 
@@ -30,7 +26,8 @@ class SteadyProblem:
 
     **Contains the following methods:**
 
-    None
+    reynolds_numbers: A list of Reynolds numbers, one for each Airplane in the
+    SteadyProblem.
     """
 
     def __init__(
@@ -85,6 +82,35 @@ class SteadyProblem:
                         T_pas_G_Cg_to_GP1_CgP1, panel.Brpp_G_Cg, has_point=True
                     )
 
+    @property
+    def reynolds_numbers(self) -> list[float]:
+        """A list of Reynolds numbers, one for each Airplane in the SteadyProblem.
+
+        **Notes:**
+
+        The Reynolds number is calculated as: Re = (V x L) / nu, where V is the
+        freestream speed, observed from the Earth frame (vCg__E from OperatingPoint,
+        m/s), L is the characteristic length (c_ref from Airplane, m), and nu is the
+        kinematic viscosity (nu from OperatingPoint, m^2/s).
+
+        These Reynolds numbers only consider the freestream speed, not any apparent
+        velocity due to prescribed motion, so be careful interpreting it for cases where
+        this SteadyProblem corresponds to one time step in an UnsteadyProblem.
+
+        :return: A list of Reynolds numbers, one for each Airplane.
+        """
+        v = self.operating_point.vCg__E
+        nu = self.operating_point.nu
+
+        reynolds_list = []
+        for airplane in self.airplanes:
+            c_ref = airplane.c_ref
+            assert c_ref is not None, "Airplane c_ref must be set to calculate Re"
+            re = (v * c_ref) / nu
+            reynolds_list.append(re)
+
+        return reynolds_list
+
 
 class UnsteadyProblem:
     """A class used to contain unsteady aerodynamics problems.
@@ -125,16 +151,16 @@ class UnsteadyProblem:
         # the final time step's forces and moments, which, assuming convergence, will be
         # the most accurate. For UnsteadyProblems with cyclic movement, (e.g. flapping
         # wings) we are typically interested in the forces and moments averaged over the
-        # last cycle simulated. Therefore, determine which time step will be the first
-        # with relevant results based on if the Movement is static or cyclic.
-        _movement_max_period = self.movement.max_period
+        # last cycle simulated. Use the LCM of all motion periods to ensure we average
+        # over a complete cycle of all motions.
+        _movement_lcm_period = self.movement.lcm_period
         self.first_averaging_step: int
-        if _movement_max_period == 0:
+        if _movement_lcm_period == 0:
             self.first_averaging_step = self.num_steps - 1
         else:
             self.first_averaging_step = max(
                 0,
-                math.floor(self.num_steps - (_movement_max_period / self.delta_time)),
+                math.floor(self.num_steps - (_movement_lcm_period / self.delta_time)),
             )
 
         # If we only wants to calculate forces and moments for the final cycle (for a

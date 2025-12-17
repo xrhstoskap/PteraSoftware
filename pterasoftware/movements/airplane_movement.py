@@ -11,21 +11,22 @@ None
 
 from __future__ import annotations
 
-from collections.abc import Sequence, Callable
+from collections.abc import Callable, Sequence
 
 import numpy as np
 
+from .. import _parameter_validation, geometry
 from . import _functions
 from . import wing_movement as wing_movement_mod
-
-from .. import _parameter_validation
-from .. import geometry
 
 
 class AirplaneMovement:
     """A class used to contain an Airplane's movement.
 
     **Contains the following methods:**
+
+    all_periods: All unique non zero periods from this AirplaneMovement, its
+    WingMovement(s), and their WingCrossSectionMovements.
 
     generate_airplanes: Creates the Airplane at each time step, and returns them in a
     list.
@@ -155,6 +156,26 @@ class AirplaneMovement:
                     "in phaseCg_GP1_CgP1 must be also be 0.0."
                 )
         self.phaseCg_GP1_CgP1 = phaseCg_GP1_CgP1
+
+    @property
+    def all_periods(self) -> list[float]:
+        """All unique non zero periods from this AirplaneMovement, its WingMovement(s),
+        and their WingCrossSectionMovements.
+
+        :return: A list of all unique non zero periods in seconds. If all motion is
+            static, this will be an empty list.
+        """
+        periods = []
+
+        # Collect all periods from WingMovement(s).
+        for wing_movement in self.wing_movements:
+            periods.extend(wing_movement.all_periods)
+
+        # Collect all periods from AirplaneMovement's own motion.
+        for period in self.periodCg_GP1_CgP1:
+            if period > 0.0:
+                periods.append(float(period))
+        return periods
 
     def generate_airplanes(
         self, num_steps: int, delta_time: float | int

@@ -12,26 +12,24 @@ None
 from __future__ import annotations
 
 import copy
-import logging
 import math
 
 import scipy.optimize as sp_opt
 
+from .. import _aerodynamics, _logging, _parameter_validation
 from . import airplane_movement as airplane_movement_mod
 from . import operating_point_movement as operating_point_movement_mod
 
-from .. import _aerodynamics
-from .. import _parameter_validation
-
-movement_logger = logging.getLogger("movements/movement")
-movement_logger.setLevel(logging.DEBUG)
-logging.basicConfig()
+movement_logger = _logging.get_logger("movements.movement")
 
 
 class Movement:
     """A class used to contain an UnsteadyProblem's movement.
 
     **Contains the following methods:**
+
+    lcm_period: The least common multiple of all motion periods, ensuring all motions
+    complete an integer number of cycles when cycle averaging forces and moments.
 
     max_period: The longest period of motion of Movement's sub movement objects, the
     motion(s) of its sub sub movement object(s), and the motions of its sub sub sub
@@ -245,10 +243,11 @@ class Movement:
                 num_steps = math.ceil(wake_length / distance_per_time_step)
             else:
                 # Set the number of time steps such that the simulation runs for some
-                # number of cycles of the motion with the maximum period.
+                # number of cycles of all motions. Use the LCM of all periods to ensure
+                # each motion completes an integer number of cycles.
                 assert self.num_cycles is not None
                 num_steps = math.ceil(
-                    self.num_cycles * self.max_period / self.delta_time
+                    self.num_cycles * self.lcm_period / self.delta_time
                 )
         self.num_steps: int = num_steps
 
@@ -296,11 +295,73 @@ class Movement:
             num_steps=self.num_steps, delta_time=self.delta_time
         )
 
+    @staticmethod
+    def _lcm(a: float, b: float) -> float:
+        """Calculates the least common multiple of two numbers.
+
+        :param a: First number (period in seconds)
+        :param b: Second number (period in seconds)
+        :return: LCM of a and b. Returns 0.0 if either input is 0.0.
+        """
+        if a == 0.0 or b == 0.0:
+            return 0.0
+        # Convert to integers (periods are typically whole multiples of delta_time)
+        # Use sufficiently large multiplier to preserve precision
+        multiplier = 1000000
+        a_int = int(round(a * multiplier))
+        b_int = int(round(b * multiplier))
+        lcm_int = abs(a_int * b_int) // math.gcd(a_int, b_int)
+        return lcm_int / multiplier
+
+    @staticmethod
+    def _lcm_multiple(periods: list[float]) -> float:
+        """Calculates the least common multiple of multiple periods.
+
+        :param periods: List of periods in seconds
+        :return: LCM of all periods. Returns 0.0 if all periods are 0.0.
+        """
+        if not periods or all(p == 0.0 for p in periods):
+            return 0.0
+        # Filter out zero periods and calculate LCM
+        non_zero_periods = [p for p in periods if p != 0.0]
+        if not non_zero_periods:
+            return 0.0
+        result = non_zero_periods[0]
+        for period in non_zero_periods[1:]:
+            result = Movement._lcm(result, period)
+        return result
+
+    @property
+    def lcm_period(self) -> float:
+        """The least common multiple of all motion periods, ensuring all motions
+        complete an integer number of cycles when cycle averaging forces and moments.
+
+        Using the LCM ensures that when cycle-averaging forces and moments, we capture a
+        complete cycle of all motions, not just the longest one. For example, if one
+        motion has a period of 2.0 s and another has a period of 3.0 s, the LCM is 6.0,
+        which contains exactly 3 cycles of the first motion and 2 cycles of the second.
+
+        :return: The LCM period in seconds. If all the motion is static, this will be
+            0.0.
+        """
+        # Collect all periods from AirplaneMovements
+        all_periods = []
+        for airplane_movement in self.airplane_movements:
+            all_periods.extend(airplane_movement.all_periods)
+
+        # Add the OperatingPointMovement period
+        all_periods.append(self.operating_point_movement.max_period)
+
+        return self._lcm_multiple(all_periods)
+
     @property
     def max_period(self) -> float:
         """The longest period of motion of Movement's sub movement objects, the
         motion(s) of its sub sub movement object(s), and the motions of its sub sub sub
         movement objects.
+
+        Note: For cycle-averaging calculations, lcm_period should be used instead of
+        max_period to ensure all motions complete an integer number of cycles.
 
         :return: The longest period in seconds. If all the motion is static, this will
             be 0.0.
@@ -338,9 +399,9 @@ def _compute_wake_area_mismatch(
 ) -> float:
     """Computes the average area mismatch between wake and bound RingVortices.
 
-    Creates a temporary Problem and solver, steps through some number of time
-    steps (geometry only, no aerodynamic solve), and computes the average area mismatch
-    at each step.
+    Creates a temporary Problem and solver, steps through some number of time steps
+    (geometry only, no aerodynamic solve), and computes the average area mismatch at
+    each step.
 
     The area mismatch metric measures how well the wake RingVortex sizing matches the
     bound RingVortex sizing. A lower value indicates better matching.
@@ -359,8 +420,7 @@ def _compute_wake_area_mismatch(
         step where they were shed). Averaged across all time steps and all pairs of
         child and parent RingVortices. A lower value indicates better matching.
     """
-    from .. import problems
-    from .. import unsteady_ring_vortex_lattice_method
+    from .. import problems, unsteady_ring_vortex_lattice_method
 
     # Deep copy the movement objects to avoid mutating originals during optimization.
     airplane_movements_copy = copy.deepcopy(airplane_movements)
@@ -478,9 +538,9 @@ def _optimize_delta_time(
     their parent bound trailing edge RingVortices. This produces better results at high
     Strouhal numbers where motion induced velocity is significant.
 
-    The search terminates early if the mismatch falls below the specified cutoff
-    value. Otherwise, it will return the locally minimum with an absolute convergence
-    tolerance of 0.001.
+    The search terminates early if the mismatch falls below the specified cutoff value.
+    Otherwise, it will return the locally minimum with an absolute convergence tolerance
+    of 0.001.
 
     The optimization search is bounded within one order of magnitude, centered at the
     specified starting value.
