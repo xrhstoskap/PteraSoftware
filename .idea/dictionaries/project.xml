@@ -28,6 +28,7 @@
       <w>bfgs</w>
       <w>bhvp</w>
       <w>bhvr</w>
+      <w>bigg</w>
       <w>blbrvp</w>
       <w>bleriot</w>
       <w>blhvp</w>
@@ -35,6 +36,7 @@
       <w>blrvp</w>
       <w>blvrp</w>
       <w>blwrvp</w>
+      <w>boldsymbol</w>
       <w>bopp</w>
       <w>brbrvp</w>
       <w>brhvp</w>
@@ -50,6 +52,7 @@
       <w>cblvpf</w>
       <w>cblvpl</w>
       <w>cblvpr</w>
+      <w>cdots</w>
       <w>chgrp</w>
       <w>chordwise</w>
       <w>chown</w>
@@ -68,6 +71,7 @@
       <w>darkgray</w>
       <w>davissm</w>
       <w>dbln</w>
+      <w>ddots</w>
       <w>defs</w>
       <w>desktopicon</w>
       <w>dfvlr</w>
@@ -172,6 +176,7 @@
       <w>marsden</w>
       <w>marske</w>
       <w>massa</w>
+      <w>mathbf</w>
       <w>matplotlib</w>
       <w>maxfev</w>
       <w>maxfun</w>
@@ -263,11 +268,13 @@
       <w>unitless</w>
       <w>usnps</w>
       <w>uvlm</w>
+      <w>vdots</w>
       <w>vectorize</w>
       <w>vertexs</w>
       <w>vertol</w>
       <w>viridis</w>
       <w>vortices</w>
+      <w>vortxl</w>
       <w>vstab</w>
       <w>vstack</w>
       <w>vtkmodules</w>
